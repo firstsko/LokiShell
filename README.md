@@ -1,5 +1,7 @@
 # Loki Shell
 
+![image](https://github.com/user-attachments/assets/8c7e73ce-ddac-48d3-9ff4-698b80816ffb)
+
 compiler linux
 
 ```
