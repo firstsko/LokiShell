@@ -1,0 +1,77 @@
+kind: pipeline
+name: client_complie
+trigger:
+  branch: release*
+node:
+  instance: 172.31.10.230
+clone:
+  disable: true
+steps:
+  - name: system_start_webhook
+    image: plugins/webhook
+    pull: never
+    settings:
+      method: GET
+      debug: true
+      urls: 'http://10.64.0.65:18080/webHook/startStep'
+  - name: build_deploy_build
+    image: appleboy/drone-ssh
+    pull: never
+    when:
+      event: promote
+      target: build
+    settings:
+      command_timeout: 5m
+      host: 10.64.0.140
+      port: '22'
+      username: docker
+      password: 5wywpwoXaq(
+      script:
+        - source ~/.bash_profile
+        - 'export GOPROXY=https://goproxy.io,direct'
+        - cd /app/docker/loki/loki-shell-client
+        - git fetch
+        - 'git checkout ${DRONE_COMMIT_BRANCH}'
+        - 'git pull origin  ${DRONE_COMMIT_BRANCH}'
+        - git pull feature_trunk
+        - bash build-client.sh
+        - cd dist
+        - tar zcvf linux-amd64.tar.gz linux-amd64
+        - tar zxvf windows-amd64.tar.gz windows-amd64
+        - tar zcvf darwin-amd64.tar.gz darwin-amd64
+  - name: transfer_deploy_ssh
+    image: appleboy/drone-ssh
+    pull: never
+    when:
+      event: promote
+      target: transfer
+    settings:
+      self_useself: '2'
+      self_useaop: '2'
+      self_usesonar: '1'
+      command_timeout: 5m
+      host: 10.64.0.140
+      password: uhdO7pblnr;
+      username: docker
+      port: '22'
+      script:
+        - >-
+          /app/docker/loki/loki-shell-client/dist/windows-amd64.tar.gz
+          docker@192.168.25.154:/app/docker/hoc/openresty/html/static/dist
+        - >-
+          /app/docker/loki/loki-shell-client/dist/darwin-amd64.tar.gz
+          docker@192.168.25.154:/app/docker/hoc/openresty/html/static/dist
+        - >-
+          /app/docker/loki/loki-shell-client/dist/linux-amd64.tar.gz
+          docker@192.168.25.154:/app/docker/hoc/openresty/html/static/dist
+  - name: system_finish_webhook
+    image: plugins/webhook
+    pull: never
+    settings:
+      method: GET
+      debug: true
+      urls: 'http://10.64.0.65:18080/webHook/endStep'
+    when:
+      status:
+        - failure
+        - success
